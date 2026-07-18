@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.jpg
+*.png
+*.webp
+.env
+/tmp/
+*.log
+*.bak
+*.bak.*
+cache/
+node_modules/
+.DS_Store
+.idea/
+.vscode/

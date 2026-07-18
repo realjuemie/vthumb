@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>视频缩略图生成器</title>
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                   "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+      --font-mono: "SF Mono", ui-monospace, "Menlo", monospace;
+      --bg:            #f2f2f7; --bg-elev:#ffffff; --bg-elev-2:#f9f9fb;
+      --fg:            #1c1c1e; --fg-secondary:#3a3a3c; --fg-tertiary:#8e8e93; --fg-quaternary:#c7c7cc;
+      --border:        #e5e5ea; --border-strong:#d1d1d6;
+      --accent:        #007aff; --accent-press:#0060df;
+      --green:         #34c759; --orange:#ff9500; --red:#ff3b30; --purple:#af52de;
+      --shadow-sm:     rgba(0,0,0,.04); --shadow-md:rgba(0,0,0,.08);
+      --glass:         rgba(255,255,255,.72); --glass-border:rgba(255,255,255,.6);
+      --radius-card:   18px; --radius-pop:14px; --radius-pill:999px;
+      --spring:        cubic-bezier(.32,.72,0,1);
+    }
+    [data-theme="dark"] { --bg:#000; --bg-elev:#1c1c1e; --bg-elev-2:#2c2c2e;
+      --fg:#fff; --fg-secondary:#ebebf5; --fg-tertiary:#8e8e93; --fg-quaternary:#48484a;
+      --border:#38383a; --border-strong:#48484a; --accent:#0a84ff; --accent-press:#0066cc;
+      --green:#30d158; --orange:#ff9f0a; --red:#ff453a; --purple:#bf5af2;
+      --shadow-sm:rgba(0,0,0,.3); --shadow-md:rgba(0,0,0,.4);
+      --glass:rgba(28,28,30,.72); --glass-border:rgba(255,255,255,.08);
+    }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+      --bg:#000; --bg-elev:#1c1c1e; --bg-elev-2:#2c2c2e;
+      --fg:#fff; --fg-secondary:#ebebf5; --fg-tertiary:#8e8e93; --fg-quaternary:#48484a;
+      --border:#38383a; --border-strong:#48484a; --accent:#0a84ff; --accent-press:#0066cc;
+      --green:#30d158; --orange:#ff9f0a; --red:#ff453a; --purple:#bf5af2;
+      --shadow-sm:rgba(0,0,0,.3); --shadow-md:rgba(0,0,0,.4);
+      --glass:rgba(28,28,30,.72); --glass-border:rgba(255,255,255,.08);
+    }}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-text-size-adjust:100%}
+    body{font:15px/1.47 var(--font-sans);letter-spacing:-0.23px;color:var(--fg);background:var(--bg);-webkit-font-smoothing:antialiased;min-height:100vh}
+    button,input,select{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none}
+    a{color:inherit;text-decoration:none}::selection{background:var(--accent);color:#fff}
+    .headline{font-size:17px;font-weight:600;letter-spacing:-0.43px}
+    .body{font-size:15px;font-weight:400;letter-spacing:-0.23px}
+    .footnote{font-size:12px;color:var(--fg-tertiary);letter-spacing:-0.05px}
+    .mono{font-family:var(--font-mono);font-size:12px}
+    ::-webkit-scrollbar{width:8px;height:8px}
+    ::-webkit-scrollbar-thumb{background:var(--fg-quaternary);border-radius:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    .glass{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid var(--glass-border)}
+    .card{background:var(--bg-elev);border-radius:var(--radius-card);box-shadow:0 1px 2px var(--shadow-sm),0 0 0 .5px rgba(0,0,0,.04);overflow:hidden}
+    .card-section{padding:16px 20px}.card-section+.card-section{border-top:.5px solid var(--border)}
+    .press{transition:transform .1s var(--spring),opacity .12s var(--spring)}.press:active{transform:scale(.97);opacity:.85}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 18px;font-size:15px;font-weight:500;border-radius:var(--radius-pill);transition:transform .1s var(--spring),background .2s ease}
+    .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-press)}
+    .btn-primary:active{transform:scale(.97)}.btn-primary[disabled]{opacity:.35;cursor:not-allowed}
+    .btn-secondary{background:var(--bg-elev-2);color:var(--accent)}.btn-secondary:hover{background:var(--border)}
+    .btn-icon{width:34px;height:34px;border-radius:50%;background:var(--bg-elev-2);display:inline-flex;align-items:center;justify-content:center;transition:background .15s ease,transform .1s var(--spring);color:var(--fg-secondary)}
+    .btn-icon:hover{background:var(--border)}.btn-icon.active{background:var(--accent);color:#fff}
+    .input{width:100%;padding:9px 13px;font-size:15px;background:var(--bg-elev-2);color:var(--fg);border-radius:10px;outline:none;transition:background .2s ease,box-shadow .2s ease}
+    .input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+
+    /* ─── Checkbox (iOS circle) ─── */
+    .check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fg-quaternary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .18s var(--spring),border-color .18s var(--spring),transform .1s var(--spring)}
+    .check:active{transform:scale(.88)}
+    .check.on{background:var(--green);border-color:var(--green)}
+    .check.on::after{content:'';width:6px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)translate(-1px,-1px)}
+
+    /* ─── iOS Switch (fixed: appearance:none) ─── */
+    .switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:999px;background:var(--fg-quaternary);position:relative;cursor:pointer;transition:background .25s var(--spring);flex-shrink:0;border:0;padding:0}
+    .switch::after{content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.05);transition:transform .28s var(--spring)}
+    .switch:checked{background:var(--green)}.switch:checked::after{transform:translateX(20px)}
+
+    /* ─── File row (list) ─── */
+    .file-row{display:flex;align-items:center;gap:14px;padding:11px 20px;border-bottom:.5px solid var(--border);cursor:pointer;transition:background .15s ease}
+    .file-row:last-child{border-bottom:0}
+    .file-row:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
+    .file-row.selected{background:color-mix(in srgb,var(--accent) 12%,transparent)}.file-row .list-thumb{width:48px;height:32px;border-radius:5px;overflow:hidden;flex-shrink:0;position:relative;background:var(--bg-elev-2);display:flex;align-items:center;justify-content:center}
+    .file-row .list-thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+    .file-row .list-thumb .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--fg-quaternary)}
+
+    /* ─── Grid view ─── */
+    .grid-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px}
+    .grid-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:var(--radius-pop);cursor:pointer;transition:background .15s ease;text-align:center;position:relative}
+    .grid-item:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
+    .grid-item.selected{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+    .grid-item .grid-check{position:absolute;top:6px;right:6px;z-index:1}
+    .grid-thumb{width:100%;aspect-ratio:16/10;background:var(--bg-elev-2);border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
+    .grid-thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+    .grid-thumb .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--fg-quaternary)}
+    .grid-name{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;line-height:1.3}
+
+    /* ─── Progress / misc ─── */
+    .progress-track{height:6px;background:var(--fg-quaternary);border-radius:999px;overflow:hidden}.progress-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .35s var(--spring)}
+
+    /* ─── Selection tips (iOS info-card style) ─── */
+    .sel-tips{background:color-mix(in srgb,var(--accent) 7%,transparent);border-top:.5px solid color-mix(in srgb,var(--accent) 18%,transparent)!important}
+    .sel-tip{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;line-height:1.45;color:var(--fg-secondary);font-weight:500}
+    .sel-tip b{color:var(--fg);font-weight:600}
+    .tip-icon{flex-shrink:0;width:18px;height:18px;margin-top:1px;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)}
+    .tip-icon svg{width:18px;height:18px}
+    .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+    .pill.green{background:color-mix(in srgb,var(--green) 15%,transparent);color:var(--green)}.pill.orange{background:color-mix(in srgb,var(--orange) 18%,transparent);color:var(--orange)}.pill.red{background:color-mix(in srgb,var(--red) 18%,transparent);color:var(--red)}.pill.blue{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+    .toast-wrap{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+    .toast{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--fg);padding:12px 22px;border-radius:999px;box-shadow:0 4px 16px var(--shadow-md),0 0 0 .5px rgba(0,0,0,.04);font-size:14px;font-weight:500;animation:toast-in .35s var(--spring) both;border:.5px solid var(--glass-border)}
+    @keyframes toast-in{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;display:none;align-items:center;justify-content:center;cursor:zoom-out;animation:lb-in .2s ease both}
+    @keyframes lb-in{from{opacity:0}to{opacity:1}}.lightbox.show{display:flex}
+    .lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px}
+    .app{max-width:1120px;margin:0 auto;padding:0 20px}
+    .grid-main{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;margin-top:24px;margin-bottom:60px}
+    @media(max-width:880px){.grid-main{grid-template-columns:1fr}}
+    .sheet-enter{animation:sheet-in .4s var(--spring) both}
+    @keyframes sheet-in{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+    .icon{width:18px;height:18px;flex-shrink:0}
+    .folder-icon{color:var(--accent)}.video-fallback{color:var(--fg-quaternary)}
+  </style>
+</head>
+<body>
+  <header class="glass" style="position:sticky;top:0;z-index:30">
+    <div class="app" style="height:56px;display:flex;align-items:center;gap:14px">
+      <div style="width:32px;height:32px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 8px rgba(0,122,255,.30)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="9.5" cy="10.5" r="2" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div><div class="headline" style="line-height:1">vthumb</div></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <select id="langSelect" class="footnote press" style="padding:6px 12px;border-radius:999px;background:var(--bg-elev-2);color:var(--fg-secondary);outline:none;-webkit-appearance:none;appearance:none;border:.5px solid var(--border)"><option value="en">EN</option><option value="zh">中</option></select>
+        <button id="themeToggle" class="press" style="width:32px;height:32px;border-radius:50%;background:var(--bg-elev-2);color:var(--fg-secondary);display:flex;align-items:center;justify-content:center;border:.5px solid var(--border)" aria-label="切换主题">
+          <svg id="iconSun" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg id="iconMoon" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main class="app">
+    <div class="grid-main">
+      <section class="card">
+        <div class="card-section" style="display:flex;align-items:center;gap:8px">
+          <svg class="icon folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+          <span class="headline">文件夹</span>
+          <span id="browseRoot" class="footnote" style="margin-left:auto;font-family:var(--font-mono)"></span>
+          <button id="viewToggle" class="btn-icon" title="缩略图"></button>
+        </div>
+        <div id="breadcrumb" class="card-section" style="padding-top:8px;padding-bottom:8px;min-height:44px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
+        <div id="fileList" style="max-height:58vh;overflow-y:auto"></div>
+      </section>
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-section" style="display:flex;align-items:center;justify-content:space-between"><span class="headline">已选择</span><span class="footnote"><span id="selCount">0</span> 个目标</span></div>
+          <div class="card-section sel-tips" style="border-top:0;padding:14px 20px 16px;display:flex;flex-direction:column;gap:8px">
+            <div class="sel-tip">
+              <span class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              <span><b>单击</b>文件前的圆点选择，<b>双击</b>视频可单独开始任务并在右侧预览</span>
+            </div>
+            <div class="sel-tip">
+              <span class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9l6 3-6 3z" fill="currentColor" stroke="none"/></svg></span>
+              <span>视频越长处理越久，一般 <b>不超过 1 分钟</b>，可放心批量</span>
+            </div>
+          </div>
+          <div id="selList" class="footnote card-section sel-list" style="font-family:var(--font-mono);max-height:140px;overflow-y:auto;padding-top:8px;padding-bottom:12px;white-space:pre-wrap;word-break:break-all;border-top:.5px solid var(--border)"></div>
+        </div>
+        <div class="card">
+          <div class="card-section" style="display:flex;align-items:center;gap:8px;padding-bottom:12px"><span class="headline">参数</span></div>
+          <div class="card-section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+            <label style="display:flex;flex-direction:column;gap:6px"><span class="footnote">帧数</span><input id="paramCount" type="number" min="1" max="64" value="16" class="input"></label>
+            <label style="display:flex;flex-direction:column;gap:6px"><span class="footnote">列数</span><input id="paramCols" type="number" min="1" max="10" value="4" class="input"></label>
+            <label style="display:flex;flex-direction:column;gap:6px"><span class="footnote">画布宽度</span><input id="paramWidth" type="number" min="320" step="160" value="1920" class="input"></label>
+            <label style="display:flex;flex-direction:column;gap:6px"><span class="footnote">缩略图宽</span><input id="paramThumbW" type="number" min="160" step="80" value="640" class="input"></label>
+          </div>
+          <div class="card-section" style="display:flex;flex-wrap:wrap;align-items:center;gap:18px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="paramRecursive" class="switch"><span class="body">递归子目录</span></label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="paramForce" class="switch"><span class="body">覆盖已有</span></label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="paramShowInfo" class="switch" checked><span class="body">显示视频信息</span></label>
+            <button id="btnClear" class="btn btn-secondary press" style="margin-left:auto">清空</button>
+            <button id="btnGenerate" class="btn btn-primary press" disabled>开始生成</button>
+          </div>
+        </div>
+        <div id="progressPanel" class="card" style="display:none">
+          <div class="card-section" style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px"><span class="headline">进度</span><span class="footnote"><span id="progCount">0/0</span></span></div>
+          <div class="card-section" style="padding-top:0;border-top:0"><div class="progress-track"><div id="progBar" class="progress-fill" style="width:0%"></div></div></div>
+          <div id="progLog" class="footnote card-section" style="font-family:var(--font-mono);max-height:160px;overflow-y:auto;padding-top:12px;display:flex;flex-direction:column;gap:4px;border-top:0"></div>
+        </div>
+        <div id="previewPanel" class="card sheet-enter" style="display:none">
+          <div class="card-section" style="display:flex;align-items:center;gap:8px;padding-bottom:12px">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span class="headline">预览</span>
+          </div>
+          <div id="previewWrap" class="card-section" style="padding:0;background:var(--bg-elev-2)"></div>
+          <div id="previewInfo" class="footnote card-section" style="font-family:var(--font-mono);padding:10px;white-space:pre-wrap;word-break:break-all"></div>
+        </div>
+      </section>
+    </div>
+    <div class="toast-wrap" id="toastWrap"></div>
+  </main>
+  <div class="lightbox" id="lightbox" onclick="this.classList.remove('show')"><img id="lightboxImg" src="" alt=""></div>
+  <script>
+    const state={currentPath:'',entries:[],selected:new Set(),ws:null,viewMode:'list'};
+    const savedTheme=localStorage.getItem('vthumb-theme'),prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+    applyTheme(savedTheme||(prefersDark?'dark':'light'));
+    function applyTheme(t){document.documentElement.dataset.theme=t;document.getElementById('iconSun').style.display=t==='dark'?'block':'none';document.getElementById('iconMoon').style.display=t==='dark'?'none':'block'}
+    document.getElementById('themeToggle').addEventListener('click',()=>{const c=document.documentElement.dataset.theme,next=(c==='dark'||(c==='auto'&&prefersDark))?'light':'dark';applyTheme(next);localStorage.setItem('vthumb-theme',next)});
+
+    function fmtSize(b){if(b<1024)return b+' B';const u=['KB','MB','GB','TB'];let v=b/1024,i=0;while(v>=1024&&i<u.length-1){v/=1024;i++}return v.toFixed(1)+' '+u[i]}
+    function toast(t){const w=document.getElementById('toastWrap'),d=document.createElement('div');d.className='toast';d.textContent=t;w.appendChild(d);setTimeout(()=>{d.style.transition='opacity .3s, transform .3s';d.style.opacity='0';d.style.transform='translateY(-8px)';setTimeout(()=>d.remove(),300)},2400)}
+
+    /* ─── View toggle ─── */
+    const vt=document.getElementById('viewToggle');
+    vt.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`;
+    vt.onclick=()=>{state.viewMode=state.viewMode==='list'?'grid':'list';vt.title=state.viewMode==='grid'?'列表':'缩略图';vt.classList.toggle('active',state.viewMode==='grid');vt.innerHTML=state.viewMode==='grid'?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';renderEntries()};
+
+    /* ─── Browse ─── */
+    async function browse(p=''){const r=await fetch('/api/browse?path='+encodeURIComponent(p)),d=await r.json();state.currentPath=d.path;state.entries=d.entries;document.getElementById('browseRoot').textContent=d.browse_root;renderBreadcrumb(d.path);renderEntries()}
+    function renderBreadcrumb(path){const e=document.getElementById('breadcrumb'),parts=path?path.split('/'):[];let h=`<a href="#" data-path="" class="footnote press" style="color:var(--accent);padding:2px 4px;border-radius:6px">根目录</a>`;let a='';parts.forEach(p=>{a=a?a+'/'+p:p;h+=`<span class="footnote" style="color:var(--fg-quaternary)">/</span><a href="#" data-path="${a}" class="footnote press" style="color:var(--accent);padding:2px 4px;border-radius:6px">${p}</a>`});e.innerHTML=h;e.querySelectorAll('a[data-path]').forEach(a=>a.onclick=e=>{e.preventDefault();browse(a.dataset.path)})}
+
+    /* ─── Render entries ─── */
+    function renderEntries(){
+      const el=document.getElementById('fileList');
+      if(state.entries.length===0){el.innerHTML=`<div style="padding:40px 20px;text-align:center;color:var(--fg-tertiary)">空文件夹</div>`;return}
+      if(state.viewMode==='grid')renderGrid(el);else renderList(el)
+    }
+
+    function renderList(el){
+      let h='';
+      for(const e of state.entries){
+        const sel=state.selected.has(e.path),isDir=e.type==='dir';
+        const p=e.path.replace(/"/g,'&quot;'),ep=encodeURIComponent(e.path);
+        const icon=isDir
+          ?`<svg class="icon folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>`
+          :`<div class="list-thumb"><img src="${e.cover?('/api/raw?p='+encodeURIComponent(e.cover)+'&t='+Date.now()):'/api/sprite?v='+ep+'&w=180&t='+Date.now()}" loading="lazy" onerror="this.onerror=null;this.src='/api/sprite?v=${ep}&w=180&t=${Date.now()}'" style="display:none"><div class="fallback" style="display:flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2.5"/><polygon points="10 9 16 12 10 15" fill="currentColor" stroke="none"/></svg></div></div>`;
+        const meta=isDir?`<span class="pill blue">${e.video_count} 视频</span>`:`<span class="footnote">${fmtSize(e.size)}</span>`;
+        h+=`<div class="file-row${sel?' selected':''}" data-path="${p}" data-type="${e.type}"><span class="check${sel?' on':''}" data-path="${p}"></span>${icon}<span class="body" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name}</span>${meta}</div>`
+      }
+      el.innerHTML=h;
+      el.querySelectorAll('.check').forEach(cb=>cb.onclick=e=>{e.stopPropagation();const p=cb.dataset.path;if(cb.classList.contains('on')){cb.classList.remove('on');state.selected.delete(p)}else{cb.classList.add('on');state.selected.add(p)}renderSelection();refreshListSelected()});
+      el.querySelectorAll('.file-row').forEach(row=>{
+        row.ondblclick=e=>{if(e.target.closest('.check'))return;const p=row.dataset.path;if(row.dataset.type==='dir')browse(p);else previewSingle(p)};
+        row.onclick=e=>{if(e.target.closest('.check')||row.dataset.type!=='dir')return;browse(row.dataset.path)};
+      });
+    }
+
+    function renderGrid(el){
+      let h='<div class="grid-view">';
+      for(const e of state.entries){
+        const sel=state.selected.has(e.path),isDir=e.type==='dir';
+        const p=e.path.replace(/"/g,'&quot;'),ep=encodeURIComponent(e.path);
+        h+=`<div class="grid-item${sel?' selected':''}" data-path="${p}" data-type="${e.type}">`;
+        h+=`<span class="check grid-check${sel?' on':''}" data-path="${p}" style="position:absolute;top:6px;right:6px;z-index:1"></span>`;
+        h+=`<div class="grid-thumb">`;
+        if(isDir){
+          h+=`<div class="fallback"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></div>`;
+        }else{
+          h+=`<img src="${e.cover?('/api/raw?p='+encodeURIComponent(e.cover)+'&t='+Date.now()):'/api/sprite?v='+ep+'&w=320&t='+Date.now()}" loading="lazy" onerror="this.onerror=null;this.src='/api/sprite?v=${ep}&w=320&t=${Date.now()}'" style="display:none"><div class="fallback" style="display:flex"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2.5"/><polygon points="10 9 16 12 10 15" fill="currentColor" stroke="none"/></svg></div>`;
+        }
+        h+=`</div><div class="grid-name">${e.name}</div><div class="pill blue">${isDir?e.video_count+' 视频':fmtSize(e.size)}</div></div>`;
+      }
+      h+='</div>';el.innerHTML=h;
+      el.querySelectorAll('.check').forEach(cb=>cb.onclick=e=>{e.stopPropagation();e.preventDefault();const p=cb.dataset.path;if(cb.classList.contains('on')){cb.classList.remove('on');state.selected.delete(p)}else{cb.classList.add('on');state.selected.add(p)}renderSelection();refreshGridSelected()});
+      el.querySelectorAll('.grid-item').forEach(row=>{
+        row.ondblclick=e=>{if(e.target.closest('.check'))return;if(row.dataset.type==='dir')browse(row.dataset.path);else previewSingle(row.dataset.path)};
+      });
+    }
+
+    function refreshListSelected(){document.querySelectorAll('.file-row').forEach(r=>r.classList.toggle('selected',state.selected.has(r.dataset.path)));document.querySelectorAll('.check').forEach(c=>c.classList.toggle('on',state.selected.has(c.dataset.path)))}
+    function refreshGridSelected(){document.querySelectorAll('.grid-item').forEach(r=>r.classList.toggle('selected',state.selected.has(r.dataset.path)));document.querySelectorAll('.grid-check').forEach(c=>c.classList.toggle('on',state.selected.has(c.dataset.path)))}
+
+    function renderSelection(){const a=[...state.selected];document.getElementById('selCount').textContent=a.length;document.getElementById('selList').textContent=a.length===0?'（尚未选择）':a.join('\n');document.getElementById('btnGenerate').disabled=a.length===0}
+
+    document.getElementById('btnClear').onclick=()=>{state.selected.clear();renderEntries();renderSelection();toast('已清空')};
+
+    /* ─── WebSocket ─── */
+    function connectWS(){if(state.ws&&state.ws.readyState===WebSocket.OPEN)return;if(state.ws){try{state.ws.close()}catch{}state.ws=null}const proto=location.protocol==='https:'?'wss:':'ws:';state.ws=new WebSocket(`${proto}//${location.host}/ws/progress`);state.ws.onmessage=ev=>{const msg=JSON.parse(ev.data),p=document.getElementById('progressPanel');if(msg.type==='batch_start'){p.style.display='';document.getElementById('progCount').textContent=`0/${msg.total}`;document.getElementById('progBar').style.width='0%';document.getElementById('progLog').innerHTML=''}else if(msg.type==='item_start'){document.getElementById('progCount').textContent=`${msg.index-1}/${msg.total}`;document.getElementById('progBar').style.width=((msg.index-1)/msg.total*100).toFixed(0)+'%';appendLog(`▶ [${msg.index}/${msg.total}] ${msg.name}`,'var(--fg-tertiary)')}else if(msg.type==='item_done'){const pill=msg.status==='ok'?'pill green':'pill red';appendLogHTML(`<span class="pill ${pill}">${msg.status.toUpperCase()}</span> ${msg.name} <span style="color:var(--fg-tertiary)">— ${msg.msg}</span>`)}else if(msg.type==='batch_done'){document.getElementById('progCount').textContent=`${msg.total}/${msg.total}`;document.getElementById('progBar').style.width='100%';appendLog('— 全部完成 —','var(--accent)');toast(`已完成 ${msg.total} 个`)}};state.ws.onclose=()=>{state.ws=null;setTimeout(connectWS,2000)}}
+    function appendLog(t,c){const l=document.getElementById('progLog'),d=document.createElement('div');d.style.color=c;d.textContent=t;l.appendChild(d);l.scrollTop=l.scrollHeight}
+    function appendLogHTML(h){const l=document.getElementById('progLog'),d=document.createElement('div');d.innerHTML=h;l.appendChild(d);l.scrollTop=l.scrollHeight}
+
+    /* ─── Generate ─── */
+    document.getElementById('btnGenerate').onclick=async()=>{const paths=[...state.selected];if(paths.length===0)return;connectWS();await new Promise(r=>setTimeout(r,300));const body={paths,count:parseInt(document.getElementById('paramCount').value),cols:parseInt(document.getElementById('paramCols').value),width:parseInt(document.getElementById('paramWidth').value),recursive:document.getElementById('paramRecursive').checked,force:document.getElementById('paramForce').checked,show_info:document.getElementById('paramShowInfo').checked,lang:document.getElementById('langSelect').value,async:true};const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(data.error){toast('错误: '+data.error);if(state.ws){state.ws.close();state.ws=null}}else{toast(`已入队 ${paths.length} 个`)}};
+
+    /* ─── Preview single ─── */
+    async function previewSingle(path){const panel=document.getElementById('previewPanel'),wrap=document.getElementById('previewWrap'),info=document.getElementById('previewInfo');panel.style.display='';panel.style.animation='none';panel.offsetHeight;panel.style.animation='sheet-in .4s var(--spring) both';wrap.innerHTML=`<div style="padding:40px;text-align:center;color:var(--fg-tertiary)">生成中…</div>`;info.textContent=path;const count=document.getElementById('paramCount').value,cols=document.getElementById('paramCols').value,width=document.getElementById('paramWidth').value,lang=document.getElementById('langSelect').value,showInfo=document.getElementById('paramShowInfo').checked?'1':'0';const img=new Image();img.onload=()=>{wrap.innerHTML='';img.style.cursor='zoom-in';img.title='点击放大';img.onclick=()=>{document.getElementById('lightboxImg').src=img.src;document.getElementById('lightbox').classList.add('show')};wrap.appendChild(img);img.style.width='100%';img.style.height='auto';img.style.display='block'};img.onerror=()=>{wrap.innerHTML=`<div style="padding:40px;text-align:center;color:var(--red)">生成失败</div>`};img.src=`/api/preview?v=${encodeURIComponent(path)}&count=${count}&cols=${cols}&width=${width}&force=1&lang=${lang}&show_info=${showInfo}&t=${Date.now()}`}
+
+    browse('');renderSelection();
+  </script>
+</body>
+</html>

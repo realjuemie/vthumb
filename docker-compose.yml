@@ -1,0 +1,25 @@
+services:
+  vthumb:
+    build: .
+    image: vthumb:latest
+    container_name: vthumb
+    restart: unless-stopped
+    ports:
+      - "8800:8800"
+    environment:
+      - BROWSE_ROOT=/vol1
+      - MEDIA_ROOT=/media
+      - DEFAULT_COUNT=16
+      - DEFAULT_COLS=4
+      - DEFAULT_WIDTH=1920
+      - DEFAULT_THUMB_W=640
+      - DEFAULT_LABEL_LANG=en
+    volumes:
+      # Browse root: whole user data tree (read-only)
+      - /mnt/media:/mnt/media:ro
+      # Reuse the host's prebuilt ffmpeg/ffprobe (avoids 200+ MB apt install
+      # and the build-time hang on large codec packages). These are mounted
+      # at /usr/local/bin/ffmpeg and /usr/local/bin/ffprobe (overrides the
+      # FFMPEG_BIN/FFPROBE_BIN defaults).
+      - /usr/bin/ffmpeg:/usr/local/bin/ffmpeg:ro
+      - /usr/bin/ffprobe:/usr/local/bin/ffprobe:ro
