@@ -1,10 +1,11 @@
 FROM python:3.11-slim
 
-# No apt ffmpeg (heavy + slow in this build env).
-# We bind-mount the host's ffmpeg/ffprobe into /usr/local/bin at compose time.
-# This image only needs: Python deps + Pillow.
-
+# Install ffmpeg/ffprobe + CJK fonts + Pillow JPEG support.
+# Combining ffmpeg here keeps the container self-contained — no host
+# bind-mounts required. CJK fonts are needed so Chinese/Japanese/Korean
+# characters render correctly in the header / timestamp labels.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg \
         fonts-dejavu-core \
         fontconfig \
         libjpeg-dev \
@@ -24,16 +25,14 @@ RUN printf '#!/bin/sh\nexec python -u /app/server.py "$@"\n' > /usr/local/bin/th
     && chmod +x /usr/local/bin/thumb
 
 ENV PORT=8800
-ENV BROWSE_ROOT=/mnt/media
-ENV MEDIA_ROOT=/mnt/media
+ENV BROWSE_ROOT=/media
+ENV MEDIA_ROOT=/media
 ENV DEFAULT_COUNT=16
 ENV DEFAULT_COLS=4
 ENV DEFAULT_WIDTH=1920
 ENV DEFAULT_THUMB_W=640
 ENV JPEG_QUALITY=95
 ENV DEFAULT_LABEL_LANG=en
-ENV FFMPEG_BIN=/usr/local/bin/ffmpeg
-ENV FFPROBE_BIN=/usr/local/bin/ffprobe
 
 EXPOSE 8800
 CMD ["python", "-u", "server.py"]

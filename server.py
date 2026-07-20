@@ -23,6 +23,7 @@ import asyncio
 import io
 import json
 import logging
+import math
 import os
 import shutil
 import subprocess
@@ -54,6 +55,14 @@ SPRITE_CACHE_DIR = Path(os.environ.get(
     str(Path(__file__).parent / "cache" / "sprite"),
 )).resolve()
 SPRITE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Tiny multi-frame cover sheets for the WebUI grid (vthumb-style, ~9 frames).
+# Same fanout + key scheme as SPRITE_CACHE_DIR.
+COVER_CACHE_DIR = Path(os.environ.get(
+    "COVER_CACHE_DIR",
+    str(Path(__file__).parent / "cache" / "cover"),
+)).resolve()
+COVER_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_COUNT = int(os.environ.get("DEFAULT_COUNT", "16"))
 DEFAULT_COLS = int(os.environ.get("DEFAULT_COLS", "4"))
@@ -560,7 +569,10 @@ def browse(path: str) -> dict:
                     "type": "video",
                     "path": str(p.relative_to(BROWSE_ROOT)),
                     "size": p.stat().st_size,
-                    "cover": find_local_cover(p),
+                    # Local cover (same-stem .jpg / folder.jpg etc.) intentionally
+                    # not exposed — WebUI defaults to the single-frame sprite
+                    # extracted from the video itself. See find_local_cover()
+                    # for the candidate list if a toggle is added later.
                 })
         except Exception:
             continue
@@ -873,6 +885,112 @@ async def handle_sprite(request: web.Request) -> web.Response:
     )
 
 
+# ── /api/cover — tiny multi-frame cover sheet (vthumb-style) for the grid ──
+#
+# Same intent as /api/sprite (fast thumbnail for the file list) but produces
+# a small N-frame grid in the vthumb aesthetic so the file list/grid doesn't
+# look like a row of identical single-frame posters.
+#
+# Defaults: width=320, count=9 (3x3), no header bar (show_info=False).
+# Cache: keyed on (path, mtime, width, count) under COVER_CACHE_DIR.
+def _cover_cache_path(video: Path, width: int, count: int) -> Path:
+    import hashlib
+    try:
+        mtime_ns = video.stat().st_mtime_ns
+    except OSError:
+        mtime_ns = 0
+    key = hashlib.sha1(str(video.resolve()).encode("utf-8")).hexdigest()[:16]
+    bucket = COVER_CACHE_DIR / key[:2]
+    bucket.mkdir(parents=True, exist_ok=True)
+    return bucket / f"{key}_{width}_{count}_{mtime_ns}.jpg"
+
+
+def _cover_sheet(video: Path, width: int, count: int) -> bytes:
+    """Render a small N-frame cover sheet (vthumb-style, no header)."""
+    cols = int(math.sqrt(count))  # 3x3 for count=9
+    info = probe(video)
+    if info.duration <= 0:
+        raise RuntimeError("duration=0")
+    margin, gap = 4, 3
+    tile_w = (width - margin * 2 - gap * (cols - 1)) // cols
+    video_ratio = info.width / max(info.height, 1)
+    if video_ratio >= 1:
+        tile_h = int(round(tile_w * 9 / 16))
+    else:
+        tile_h = int(round(tile_w * 16 / 9))
+    frames, ts_list = extract_frames(video, info, count, tile_w, tile_h)
+    try:
+        jpeg = compose_sheet(frames, ts_list, info, video, width, cols,
+                             lang=DEFAULT_LABEL_LANG, show_info=False)
+        return jpeg
+    finally:
+        for f in frames:
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
+
+
+def _cover_cached(video: Path, width: int, count: int, force: bool) -> bytes:
+    out = _cover_cache_path(video, width, count)
+    if out.exists() and not force:
+        return out.read_bytes()
+    data = _cover_sheet(video, width, count)
+    out.write_bytes(data)
+    return data
+
+
+async def handle_cover(request: web.Request) -> web.Response:
+    rel = request.query.get("v", "")
+    rp = safe_resolve(rel)
+    if rp is None or not rp.is_file():
+        return web.Response(status=404)
+    width = int(request.query.get("w", "320"))
+    width = max(160, min(width, 960))
+    n = int(request.query.get("n", "9"))
+    n = max(1, min(n, 16))
+    force = request.query.get("force", "0") == "1"
+    # n=1 is just a single frame — reuse the cheap sprite path so we don't
+    # pay the cost of compose_sheet (which is designed for multi-frame grids).
+    if n == 1:
+        try:
+            loop = asyncio.get_event_loop()
+            data = await loop.run_in_executor(None, _sprite_cached, rp, width, force)
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+        return web.Response(
+            body=data,
+            content_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=604800"},
+        )
+    # Pick a near-square layout based on n
+    if n == 4:
+        cols, rows = 2, 2
+    elif n <= 6:
+        cols, rows = 3, 2
+    elif n <= 9:
+        cols, rows = 3, 3
+    elif n <= 12:
+        cols, rows = 4, 3
+    elif n <= 16:
+        cols, rows = 4, 4
+    else:
+        cols, rows = 4, 4
+    count = cols * rows
+    try:
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(
+            None, _cover_cached, rp, width, count, force,
+        )
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+    return web.Response(
+        body=data,
+        content_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=604800"},
+    )
+
+
 async def handle_ws(request: web.Request) -> web.WebSocketResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
@@ -921,6 +1039,7 @@ def main():  # noqa: F811
         app.router.add_post("/api/generate", handle_generate)
         app.router.add_get("/api/preview", handle_preview)
         app.router.add_get("/api/sprite", handle_sprite)
+        app.router.add_get("/api/cover", handle_cover)
         app.router.add_get("/api/raw", handle_raw)
         app.router.add_get("/ws/progress", handle_ws)
         port = int(os.environ.get("PORT", "8800"))
