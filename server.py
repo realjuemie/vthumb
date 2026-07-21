@@ -816,13 +816,23 @@ def _ffmpeg_sprite(video: Path, width: int) -> bytes:
     out_path: Optional[Path] = None
     for ts in seek_targets:
         out_path = SPRITE_CACHE_DIR / f"_probe_{os.getpid()}_{ts:.3f}.jpg"
+        # NOTE: ffmpeg 6+ applies an implicit autorotate filter when the
+        # source stream carries a `displaymatrix` rotation tag (common on
+        # phone recordings). For video thumbnails that breaks aspect-ratio
+        # detection: the JPEG comes out at the rotated pixel dimensions
+        # (e.g. 2160x3840 for a landscape shot with rotation=-90), so the
+        # WebUI would render it as a portrait cell. We disable the auto-
+        # rotate and leave orientation handling to the player, so the
+        # extracted sprite has the same w:h as the stream metadata.
         cmd = [
             "ffmpeg", "-y", "-loglevel", "error",
+            "-noautorotate",
             "-ss", f"{ts:.3f}",
             "-i", str(video),
             "-frames:v", "1",
             "-vf", f"scale={width}:-2",
             "-q:v", "4",
+            "-update", "1",
             str(out_path),
         ]
         try:

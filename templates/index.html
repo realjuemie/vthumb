@@ -75,17 +75,17 @@
     .file-row:last-child{border-bottom:0}
     .file-row:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
     .file-row.selected{background:color-mix(in srgb,var(--accent) 12%,transparent)}.file-row .list-thumb{width:48px;height:32px;border-radius:5px;overflow:hidden;flex-shrink:0;position:relative;background:var(--bg-elev-2);display:flex;align-items:center;justify-content:center}
-    .file-row .list-thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+    .file-row .list-thumb img{width:100%;height:100%;object-fit:contain;background:var(--bg);position:absolute;inset:0}
     .file-row .list-thumb .fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--fg-quaternary)}
 
     /* ─── Grid view ─── */
-    .grid-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px}
+    .grid-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px;align-items:start}
     .grid-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:var(--radius-pop);cursor:pointer;transition:background .15s ease;text-align:center;position:relative}
     .grid-item:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
     .grid-item.selected{background:color-mix(in srgb,var(--accent) 12%,transparent)}
     .grid-item .grid-check{position:absolute;top:6px;right:6px;z-index:1}
-    .grid-thumb{width:100%;aspect-ratio:16/10;background:var(--bg-elev-2);border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
-    .grid-thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+    .grid-thumb{width:100%;min-height:88px;background:var(--bg-elev-2);border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;background-repeat:no-repeat}
+    .grid-thumb img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
     .grid-thumb .fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--fg-quaternary)}
     .grid-thumb .fallback.dir-icon{display:flex;color:var(--accent);background:var(--bg-elev-2)}
     .grid-name{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;line-height:1.3}
@@ -202,6 +202,43 @@
     document.getElementById('themeToggle').addEventListener('click',()=>{const c=document.documentElement.dataset.theme,next=(c==='dark'||(c==='auto'&&prefersDark))?'light':'dark';applyTheme(next);localStorage.setItem('vthumb-theme',next)});
 
     function fmtSize(b){if(b<1024)return b+' B';const u=['KB','MB','GB','TB'];let v=b/1024,i=0;while(v>=1024&&i<u.length-1){v/=1024;i++}return v.toFixed(1)+' '+u[i]}
+
+    // Sprite <img> onload handler: read the natural width/height of the
+    // extracted frame and adjust the .grid-thumb cell so a portrait video
+    // is shown in its full vertical extent instead of being letterboxed
+    // / cropped inside a hard-coded 16:9 box. Horizontal videos keep the
+    // default 16:9-ish cell, so mixed-orientation folders stay tidy.
+    //
+    // The same sprite URL is also stamped onto the cell's CSS background
+    // (cover + center) so when a horizontal cell sits next to a portrait
+    // cell in the same grid row, the horizontal cell still fills its full
+    // row height with a blurred-style background — no blank gap above or
+    // below the contained sprite.
+    function _fitSprite(img){
+      const n=img.naturalWidth,h=img.naturalHeight;
+      const cell=img.parentElement;
+      if(!n||!h||!cell){return}
+      // Stamp the sprite URL onto the cell so the background fills any
+      // extra row height (mixed-orientation rows).
+      try{cell.style.backgroundImage='url("'+(img.currentSrc||img.src)+'")';}catch(e){}
+      if(h>n){
+        // portrait — set cell to real aspect ratio AND an absolute height so
+        // the flex item actually grows (CSS grid items don't honour
+        // aspect-ratio as height in row tracks reliably).
+        const cellH=Math.round(cell.clientWidth*h/n);
+        cell.style.aspectRatio=n+'/'+h;
+        cell.style.height=cellH+'px';
+        cell.style.flex='0 0 '+cellH+'px';
+      } else {
+        // landscape — keep the default CSS height, just stamp the real
+        // aspect ratio so the browser can lay out neighbouring cells
+        // without extra blank space.
+        cell.style.aspectRatio=n+'/'+h;
+        cell.style.height='';
+        cell.style.flex='';
+      }
+      const fb=img.nextElementSibling;if(fb)fb.style.display='none';
+    }
     function toast(t){const w=document.getElementById('toastWrap'),d=document.createElement('div');d.className='toast';d.textContent=t;w.appendChild(d);setTimeout(()=>{d.style.transition='opacity .3s, transform .3s';d.style.opacity='0';d.style.transform='translateY(-8px)';setTimeout(()=>d.remove(),300)},2400)}
 
     /* ─── View toggle ─── */
@@ -250,7 +287,7 @@
         if(isDir){
           h+=`<div class="fallback dir-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></div>`;
         }else{
-          h+=`<img src="/api/sprite?v=${ep}&w=320&t=${Date.now()}" loading="lazy" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="fallback"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2.5"/><polygon points="10 9 16 12 10 15" fill="currentColor" stroke="none"/></svg></div>`;
+          h+=`<img src="/api/sprite?v=${ep}&w=320&t=${Date.now()}" loading="lazy" onload="_fitSprite(this)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="fallback"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2.5"/><polygon points="10 9 16 12 10 15" fill="currentColor" stroke="none"/></svg></div>`;
         }
         h+=`</div><div class="grid-name">${e.name}</div><div class="pill blue">${isDir?e.video_count+' 视频':fmtSize(e.size)}</div></div>`;
       }
