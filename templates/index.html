@@ -60,7 +60,7 @@
     .input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
 
     /* ─── Checkbox (iOS circle) ─── */
-    .check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fg-quaternary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .18s var(--spring),border-color .18s var(--spring),transform .1s var(--spring)}
+    .check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fg-quaternary);background:var(--bg-elev);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .18s var(--spring),border-color .18s var(--spring),transform .1s var(--spring);position:relative;z-index:5;box-shadow:0 1px 2px rgba(0,0,0,.15)}
     .check:active{transform:scale(.88)}
     .check.on{background:var(--green);border-color:var(--green)}
     .check.on::after{content:'';width:6px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)translate(-1px,-1px)}
