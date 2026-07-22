@@ -60,7 +60,7 @@
     .input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
 
     /* ─── Checkbox (iOS circle) ─── */
-    .check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fg-quaternary);background:var(--bg-elev);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .18s var(--spring),border-color .18s var(--spring),transform .1s var(--spring);position:relative;z-index:5;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+    .check{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fg-quaternary);background:var(--bg-elev);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .18s var(--spring),border-color .18s var(--spring),transform .1s var(--spring);box-shadow:0 1px 2px rgba(0,0,0,.15)}
     .check:active{transform:scale(.88)}
     .check.on{background:var(--green);border-color:var(--green)}
     .check.on::after{content:'';width:6px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)translate(-1px,-1px)}
@@ -284,7 +284,7 @@
         const sel=state.selected.has(e.path),isDir=e.type==='dir';
         const p=e.path.replace(/"/g,'&quot;'),ep=encodeURIComponent(e.path);
         h+=`<div class="grid-item${sel?' selected':''}" data-path="${p}" data-type="${e.type}">`;
-        h+=`<span class="check grid-check${sel?' on':''}" data-path="${p}" style="position:absolute;top:6px;right:6px;z-index:1"></span>`;
+        h+=`<span class="check grid-check${sel?' on':''}" data-path="${p}"></span>`;
         h+=`<div class="grid-thumb">`;
         if(isDir){
           h+=`<div class="fallback dir-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></div>`;
