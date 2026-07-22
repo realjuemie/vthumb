@@ -1,15 +1,27 @@
 __pycache__/
 *.pyc
 *.pyo
+
+# Generated thumbnail / sprite cache (host-side, recreated on demand)
+cache/
+
+# Wildcards below intentionally cover generated thumbnails too.
+# Re-include anything under docs/screenshots/ since the README uses
+# real screenshots stored as PNG / JPG.
 *.jpg
 *.png
 *.webp
+!docs/screenshots/
+!docs/screenshots/*.jpg
+!docs/screenshots/*.png
+!docs/screenshots/*.webp
+
 .env
 /tmp/
 *.log
 *.bak
 *.bak.*
-cache/
+
 node_modules/
 .DS_Store
 .idea/
