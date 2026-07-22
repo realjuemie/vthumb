@@ -8,6 +8,17 @@ Generates clean 4×4 (configurable) frame-grid sheets with video metadata,
 timestamp labels, and CJK font support — like PotPlayer's built-in thumbnail
 feature, but as a self-hosted web service.
 
+## Screenshots
+
+| | |
+|---|---|
+| ![WebUI main view](docs/screenshots/01-webui-list-mode.png) | ![Preview panel + contact sheet](docs/screenshots/02-preview-contact-sheet.png) |
+| **WebUI main view** — left file browser, right parameter panel | **Preview panel** — video metadata + 4×4 frame grid + timestamps |
+
+**Actual generated thumbnail sample** (1920px-wide canvas, Zootopia BluRay, 4 cols × 4 rows = 16 frames, header strip on top):
+
+![Zootopia 4x4 contact sheet](docs/screenshots/03-sample-output-zootopia.jpg)
+
 ## Generated thumbnail
 
 - Header strip: filename / size / resolution / codec / duration

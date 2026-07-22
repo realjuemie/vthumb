@@ -7,6 +7,17 @@ PotPlayer 风格视频缩略图生成器 · WebUI + CLI
 生成干净的 N×N 视频帧网格缩略图，附视频元信息和时间戳
 ——类似 PotPlayer 内置的"创建缩略图"功能，以自托管 Web 服务形式运行。
 
+## 截图预览
+
+| | |
+|---|---|
+| ![WebUI 主界面](docs/screenshots/01-webui-list-mode.png) | ![预览面板与 contact sheet](docs/screenshots/02-preview-contact-sheet.png) |
+| **WebUI 主界面**：左侧文件浏览器 + 右侧参数面板 | **预览面板**：视频元信息 + 4×4 帧网格 + 时间戳 |
+
+**实际生成的缩略图样图**（1920px 宽画布，疯狂动物城 BluRay，4 列 × 4 行 = 16 帧，顶部带信息栏）：
+
+![Zootopia 4x4 contact sheet](docs/screenshots/03-sample-output-zootopia.jpg)
+
 ## 生成效果
 
 - 顶部信息栏：文件名 / 大小 / 分辨率 / 编码 / 时长
